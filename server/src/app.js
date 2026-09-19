@@ -1,17 +1,23 @@
-// 
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+
 const errorHandler = require('./middleware/errorHandler');
+const authRoutes = require('./routes/auth.routes');
 
 const app = express();
 
+// ─────────────────────────────────────────────
+// Global middleware
+// ─────────────────────────────────────────────
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
+// ─────────────────────────────────────────────
+// Health & root
+// ─────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -24,7 +30,14 @@ app.get('/', (req, res) => {
   res.json({ message: 'PS-9 Emergency Response API', version: '1.0.0' });
 });
 
+// ─────────────────────────────────────────────
+// API routes
+// ─────────────────────────────────────────────
+app.use('/api/v1/auth', authRoutes);
+
+// ─────────────────────────────────────────────
 // ⚠️ ERROR HANDLER MUST BE LAST
+// ─────────────────────────────────────────────
 app.use(errorHandler);
 
 module.exports = app;
