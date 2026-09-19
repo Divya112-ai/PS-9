@@ -5,6 +5,8 @@ const helmet = require('helmet');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const incidentRoutes = require('./routes/incident.routes');
+const resourceRoutes = require('./routes/resource.routes');
+const alertRoutes = require('./routes/alert.routes');
 
 const app = express();
 
@@ -30,8 +32,10 @@ app.get('/', (req, res) => {
 // ─── API routes ───
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/incidents', incidentRoutes);
+app.use('/api/v1/resources', resourceRoutes);
+app.use('/api/v1/alerts', alertRoutes);
 
-// ─── Error handler (LAST) ───
+// ─── Error handler ───
 app.use(errorHandler);
 
 module.exports = app;

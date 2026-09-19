@@ -16,6 +16,7 @@ const requireAuth = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // console.log('🔍 [DEBUG] Decoded token:', decoded);   // ← remove after debugging
     req.user = { id: decoded.id, role: decoded.role };
     next();
   } catch (err) {
@@ -37,6 +38,12 @@ const requireRole = (...roles) => (req, res, next) => {
   if (!req.user) {
     return next(ApiError.unauthorized('Not authenticated', 'NOT_AUTHENTICATED'));
   }
+
+  // console.log('🔍 [DEBUG] requireRole check:', {        // ← remove after debugging
+  //   userRole: req.user.role,
+  //   allowedRoles: roles,
+  //   match: roles.includes(req.user.role),
+  // });
 
   if (!roles.includes(req.user.role)) {
     return next(
