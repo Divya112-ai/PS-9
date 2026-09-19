@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PS-9 Socket.IO Test</title>
+  <style>
+    body { font-family: monospace; background: #0f172a; color: #e2e8f0; padding: 20px; }
+    h1 { color: #38bdf8; }
+    .log { margin: 6px 0; padding: 8px; background: #1e293b; border-radius: 4px; word-break: break-all; }
+    .event { color: #38bdf8; font-weight: bold; }
+    .status { color: #22c55e; }
+    .disconnected { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <h1>PS-9 Socket.IO Test</h1>
+  <div id="status">Connecting...</div>
+  <div id="log"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io('http://localhost:5000');
+    const log = document.getElementById('log');
+    const status = document.getElementById('status');
+
+    function addLog(html) {
+      const div = document.createElement('div');
+      div.className = 'log';
+      div.innerHTML = `[${new Date().toLocaleTimeString()}] ${html}`;
+      log.prepend(div);
+    }
+
+    socket.on('connect', () => {
+      status.innerHTML = `<span class="status">✅ Connected (${socket.id})</span>`;
+      addLog('<span class="event">connected</span>');
+    });
+
+    socket.on('disconnect', () => {
+      status.innerHTML = '<span class="disconnected">❌ Disconnected</span>';
+      addLog('<span class="event">disconnected</span>');
+    });
+
+    socket.on('connected', (data) => {
+      addLog(`<span class="event">server:connected</span> ${JSON.stringify(data)}`);
+    });
+
+    ['incident:created', 'incident:updated', 'incident:assigned',
+     'incident:resolved', 'incident:duplicate_candidates',
+     'resource:updated', 'alert:created', 'alert:acknowledged'].forEach((evt) => {
+      socket.on(evt, (payload) => {
+        addLog(`<span class="event">${evt}</span> ${JSON.stringify(payload).slice(0, 200)}...`);
+      });
+    });
+  </script>
+</body>
+</html>

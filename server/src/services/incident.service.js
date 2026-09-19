@@ -4,6 +4,7 @@ const Resource = require('../models/Resource');
 const AnalyticsEvent = require('../models/AnalyticsEvent');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
+const { safeEmit } = require('../sockets/socket');
 const { classifyWithAI } = require('./ai.service');
 const { findDuplicateCandidates } = require('./duplicate.service');
 const { recommendResources } = require('./resource.service');
@@ -102,6 +103,16 @@ const createIncident = async (payload, actor = null) => {
     priority: incident.priority,
     duplicateCount: duplicateCandidates.length,
   });
+
+  // ⚡ Real-time broadcast
+  safeEmit('incident:created', incident.toObject());
+  if (duplicateCandidates.length > 0) {
+    safeEmit('incident:duplicate_candidates', {
+      incidentId: incident._id,
+      publicId: incident.publicId,
+      candidates: duplicateCandidates,
+    });
+  }
 
   return {
     incident: incident.toObject(),
@@ -223,6 +234,13 @@ const assignResource = async (incidentId, resourceId, actor) => {
     resource: resource.publicId,
   });
 
+  // ⚡ Real-time broadcast
+  safeEmit('incident:assigned', {
+    incident: incident.toObject(),
+    resource: resource.toObject(),
+  });
+  safeEmit('resource:updated', resource.toObject());
+
   return { incident, resource };
 };
 
@@ -284,6 +302,12 @@ const updateStatus = async (incidentId, newStatus, actor, notes = null) => {
     from: previousStatus,
     to: newStatus,
   });
+
+  // ⚡ Real-time broadcast
+  safeEmit('incident:updated', incident.toObject());
+  if (newStatus === 'resolved') {
+    safeEmit('incident:resolved', incident.toObject());
+  }
 
   return incident;
 };
@@ -347,6 +371,10 @@ const mergeIncidents = async (targetId, sourceId, actor) => {
     target: target.publicId,
     source: source.publicId,
   });
+
+  // ⚡ Real-time broadcast
+  safeEmit('incident:updated', target.toObject());
+  safeEmit('incident:updated', source.toObject());
 
   return { target, source };
 };

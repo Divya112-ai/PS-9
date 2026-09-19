@@ -11,10 +11,13 @@ const alertRoutes = require('./routes/alert.routes');
 const app = express();
 
 // ─── Global middleware ───
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));   // ← relaxed CSP for test page
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// ─── Static files (serves /public) ───
+app.use(express.static('public'));
 
 // ─── Health & root ───
 app.get('/health', (req, res) => {
@@ -35,7 +38,7 @@ app.use('/api/v1/incidents', incidentRoutes);
 app.use('/api/v1/resources', resourceRoutes);
 app.use('/api/v1/alerts', alertRoutes);
 
-// ─── Error handler ───
+// ─── Error handler (last) ───
 app.use(errorHandler);
 
 module.exports = app;
