@@ -3,6 +3,7 @@ const http = require('http');
 const app = require('./src/app');
 const connectDB = require('./src/config/db');
 const { initSocket } = require('./src/sockets/socket');
+const { startEscalationCron } = require('./src/services/escalation.service');
 
 // Import models to register schemas
 require('./src/models');
@@ -15,8 +16,11 @@ const start = async () => {
   // Create HTTP server wrapping the Express app
   const httpServer = http.createServer(app);
 
-  // Attach Socket.IO to the HTTP server (NOT to Express)
+  // Attach Socket.IO to the HTTP server
   initSocket(httpServer);
+
+  // Start the escalation cron
+  startEscalationCron();
 
   httpServer.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
