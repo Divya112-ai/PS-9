@@ -7,11 +7,12 @@ const authRoutes = require('./routes/auth.routes');
 const incidentRoutes = require('./routes/incident.routes');
 const resourceRoutes = require('./routes/resource.routes');
 const alertRoutes = require('./routes/alert.routes');
+const analyticsRoutes = require('./routes/analytics.routes');   // ← NEW
 
 const app = express();
 
 // ─── Global middleware ───
-app.use(helmet({ contentSecurityPolicy: false }));   // ← relaxed CSP for test page
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -37,6 +38,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/incidents', incidentRoutes);
 app.use('/api/v1/resources', resourceRoutes);
 app.use('/api/v1/alerts', alertRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);   // ← NEW
 
 // ─── Error handler (last) ───
 app.use(errorHandler);
