@@ -1,10 +1,11 @@
+// 
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
-// Security & parsing middleware
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json({ limit: '5mb' }));
@@ -19,9 +20,11 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API root
 app.get('/', (req, res) => {
   res.json({ message: 'PS-9 Emergency Response API', version: '1.0.0' });
 });
+
+// ⚠️ ERROR HANDLER MUST BE LAST
+app.use(errorHandler);
 
 module.exports = app;
