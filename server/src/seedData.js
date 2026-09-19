@@ -90,6 +90,15 @@ const seedIncidents = async (users, resources) => {
   await AnalyticsEvent.deleteMany({});
   await Counter.deleteMany({});
 
+  // ─────────────────────────────────────────────
+  // FIX: Reserve counter slots for the 3 seeded incidents + reports
+  // so the next auto-generated ID is INC-10004 / REP-10004, not 10001.
+  // ─────────────────────────────────────────────
+  await Counter.create([
+    { _id: 'incident', seq: 3 },
+    { _id: 'report', seq: 3 },
+  ]);
+
   const operator = users.find((u) => u.email === 'operator@ps9.local');
 
   const incidents = [
@@ -228,10 +237,11 @@ const runSeed = async () => {
 
     console.log('\n✅ Seed complete!\n');
     console.log('📋 Test credentials:');
-    console.log('   Admin:    admin@ps9.local     / password123');
-    console.log('   Operator: operator@ps9.local  / password123');
+    console.log('   Admin:     admin@ps9.local      / password123');
+    console.log('   Operator:  operator@ps9.local   / password123');
     console.log('   Responder: responder1@ps9.local / password123');
-    console.log('   Citizen:  citizen@ps9.local   / password123');
+    console.log('   Citizen:   citizen@ps9.local    / password123');
+    console.log('\n🔢 Counters set: next incident = INC-10004, next report = REP-10004');
     console.log('\n🎬 Ready for demo. Run `npm run dev` and open the dashboard.\n');
 
     process.exit(0);
