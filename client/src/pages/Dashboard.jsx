@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { RefreshCw, RotateCcw } from 'lucide-react';
 import KPICards from '../components/dashboard/KPICards';
 import IncidentCard from '../components/incidents/IncidentCard';
+import IncidentDetailPanel from '../components/incidents/IncidentDetailPanel';
 import ResourcePanel from '../components/resources/ResourcePanel';
 import AlertFeed from '../components/alerts/AlertFeed';
 import MapView from '../components/map/MapView';
@@ -12,7 +12,6 @@ import { useSocketEvent } from '../hooks/useSocket';
 import { useAuth } from '../context/AuthContext';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
   const { hasRole } = useAuth();
 
   const [incidents, setIncidents] = useState([]);
@@ -24,7 +23,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [runningDemo, setRunningDemo] = useState(false);
 
-  // ─── Initial load ───
   const loadData = useCallback(async () => {
     try {
       const params = filter === 'active' ? { active: 'true' } : { status: filter };
@@ -50,7 +48,6 @@ const Dashboard = () => {
     loadData();
   }, [loadData]);
 
-  // Refresh KPIs and alerts when incidents change
   const refreshKPIs = useCallback(async () => {
     try {
       const [kpiRes, alertRes] = await Promise.all([
@@ -64,7 +61,6 @@ const Dashboard = () => {
     }
   }, []);
 
-  // ─── Socket.IO listeners ───
   useSocketEvent('incident:created', (incident) => {
     setIncidents((prev) => {
       if (prev.find((i) => i._id === incident._id)) return prev;
@@ -105,13 +101,9 @@ const Dashboard = () => {
   });
 
   useSocketEvent('demo:reset', () => {
+    setSelectedIncident(null);
     loadData();
   });
-
-  // ─── Handlers ───
-  const handleIncidentClick = (incident) => {
-    setSelectedIncident(incident);
-  };
 
   const handleAcknowledge = async (alertId) => {
     try {
@@ -128,7 +120,6 @@ const Dashboard = () => {
     setRunningDemo(true);
     try {
       await demoAPI.marketFire();
-      // Demo runs in background — socket events will stream in
     } catch (err) {
       alert('Demo failed: ' + (err.response?.data?.message || err.message));
     } finally {
@@ -140,13 +131,13 @@ const Dashboard = () => {
     if (!window.confirm('Reset demo? This deletes all incidents, alerts, and events.')) return;
     try {
       await demoAPI.reset();
+      setSelectedIncident(null);
       loadData();
     } catch (err) {
       alert('Reset failed: ' + (err.response?.data?.message || err.message));
     }
   };
 
-  // ─── Filtered lists ───
   const activeResources = resources.filter((r) => r.status !== 'available');
   const availableResources = resources.filter((r) => r.status === 'available');
 
@@ -160,101 +151,105 @@ const Dashboard = () => {
   }
 
   return (
-    <div style={styles.container}>
-      {/* ─── KPI row ─── */}
-      <KPICards data={kpis} />
+    <div style={{ position: 'relative', height: '100%' }}>
+      <div style={styles.container}>
+        <KPICards data={kpis} />
 
-      {/* ─── Action bar ─── */}
-      {hasRole('admin', 'operator') && (
-        <div style={styles.actionBar}>
-          <Button variant="danger" size="sm" onClick={handleRunDemo} loading={runningDemo}>
-            🔥 Run Market Fire Demo
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleResetDemo}>
-            <RotateCcw size={14} /> Reset Demo
-          </Button>
-        </div>
-      )}
+        {hasRole('admin', 'operator') && (
+          <div style={styles.actionBar}>
+            <Button variant="danger" size="sm" onClick={handleRunDemo} loading={runningDemo}>
+              🔥 Run Market Fire Demo
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleResetDemo}>
+              <RotateCcw size={14} /> Reset Demo
+            </Button>
+          </div>
+        )}
 
-      {/* ─── Main 3-column layout ─── */}
-      <div style={styles.mainGrid}>
-        {/* ─── Left: Incident list ─── */}
-        <div style={styles.panel}>
-          <div style={styles.panelHeader}>
-            <h3 style={styles.panelTitle}>Incidents ({incidents.length})</h3>
-            <div style={styles.filterRow}>
-              {['active', 'classified', 'assigned', 'on_scene', 'resolved'].map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  style={{
-                    ...styles.filterBtn,
-                    ...(filter === f ? styles.filterBtnActive : {}),
-                  }}
-                >
-                  {f}
-                </button>
-              ))}
+        <div style={styles.mainGrid}>
+          <div style={styles.panel}>
+            <div style={styles.panelHeader}>
+              <h3 style={styles.panelTitle}>Incidents ({incidents.length})</h3>
+              <div style={styles.filterRow}>
+                {['active', 'classified', 'assigned', 'on_scene', 'resolved'].map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    style={{
+                      ...styles.filterBtn,
+                      ...(filter === f ? styles.filterBtnActive : {}),
+                    }}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={styles.scrollList}>
+              {incidents.length === 0 ? (
+                <p style={styles.emptyText}>No incidents match this filter</p>
+              ) : (
+                incidents.map((incident) => (
+                  <IncidentCard
+                    key={incident._id}
+                    incident={incident}
+                    onClick={() => setSelectedIncident(incident)}
+                    selected={selectedIncident?._id === incident._id}
+                  />
+                ))
+              )}
             </div>
           </div>
 
-          <div style={styles.scrollList}>
-            {incidents.length === 0 ? (
-              <p style={styles.emptyText}>No incidents match this filter</p>
-            ) : (
-              incidents.map((incident) => (
-                <IncidentCard
-                  key={incident._id}
-                  incident={incident}
-                  onClick={() => handleIncidentClick(incident)}
-                  selected={selectedIncident?._id === incident._id}
-                />
-              ))
-            )}
+          <div style={styles.mapPanel}>
+            <MapView
+              incidents={incidents}
+              resources={resources}
+              center={selectedIncident?.location?.coordinates || null}
+              height="100%"
+            />
+          </div>
+
+          <div style={styles.panel}>
+            <div style={styles.panelHeader}>
+              <h3 style={styles.panelTitle}>Resources ({resources.length})</h3>
+            </div>
+            <div style={styles.scrollList}>
+              <ResourcePanel
+                resources={activeResources}
+                title={`Deployed (${activeResources.length})`}
+                emptyText="No deployed resources"
+              />
+              <ResourcePanel
+                resources={availableResources}
+                title={`Available (${availableResources.length})`}
+                emptyText="No available resources"
+              />
+            </div>
           </div>
         </div>
 
-        {/* ─── Center: Map ─── */}
-        <div style={styles.mapPanel}>
-          <MapView
-            incidents={incidents}
-            resources={resources}
-            center={
-              selectedIncident?.location?.coordinates
-                ? selectedIncident.location.coordinates
-                : null
-            }
-            height="100%"
-          />
-        </div>
-
-        {/* ─── Right: Resources ─── */}
-        <div style={styles.panel}>
+        <div style={styles.alertPanel}>
           <div style={styles.panelHeader}>
-            <h3 style={styles.panelTitle}>Resources ({resources.length})</h3>
+            <h3 style={styles.panelTitle}>Alerts ({alerts.length})</h3>
           </div>
-          <div style={styles.scrollList}>
-            <ResourcePanel
-              resources={activeResources}
-              title={`Deployed (${activeResources.length})`}
-              emptyText="No deployed resources"
-            />
-            <ResourcePanel
-              resources={availableResources}
-              title={`Available (${availableResources.length})`}
-              emptyText="No available resources"
-            />
-          </div>
+          <AlertFeed alerts={alerts} onAcknowledge={handleAcknowledge} />
         </div>
       </div>
 
-      {/* ─── Bottom: Alert feed ─── */}
-      <div style={styles.alertPanel}>
-        <div style={styles.panelHeader}>
-          <h3 style={styles.panelTitle}>Alerts ({alerts.length})</h3>
-        </div>
-        <AlertFeed alerts={alerts} onAcknowledge={handleAcknowledge} />
-      </div>
+      {selectedIncident && (
+        <IncidentDetailPanel
+          incident={selectedIncident}
+          onClose={() => setSelectedIncident(null)}
+          onUpdate={(updated) => {
+            setSelectedIncident(updated);
+            setIncidents((prev) =>
+              prev.map((i) => (i._id === updated._id ? updated : i))
+            );
+          }}
+        />
+      )}
     </div>
   );
 };
