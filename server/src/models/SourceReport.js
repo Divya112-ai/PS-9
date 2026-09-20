@@ -17,7 +17,7 @@ const sourceReportSchema = new mongoose.Schema(
     },
     sourceType: {
       type: String,
-      enum: ['citizen', 'sensor', 'field_team', 'call_center'],
+      enum: ['citizen', 'sensor', 'field_team', 'call_center', 'whatsapp'],
       default: 'citizen',
     },
     description: {
@@ -55,6 +55,17 @@ const sourceReportSchema = new mongoose.Schema(
       type: String,
       default: null,
       // Phone number — fake/demo only for hackathon
+    },
+
+    // WhatsApp-specific fields (populated when sourceType === 'whatsapp')
+    whatsapp: {
+      messageSid: { type: String, default: null, index: true },
+      profileName: { type: String, default: null },
+      from: { type: String, default: null },
+      to: { type: String, default: null },
+      numMedia: { type: Number, default: 0 },
+      mediaUrls: { type: [String], default: [] },
+      mediaContentTypes: { type: [String], default: [] },
     },
   },
   { timestamps: true }

@@ -3,6 +3,10 @@ const Resource = require('../models/Resource');
 const AnalyticsEvent = require('../models/AnalyticsEvent');
 const logger = require('../utils/logger');
 
+// Use the incident's actual "when it happened" time.
+// Fall back to createdAt for older incidents that don't have reportedAt.
+const incidentStart = { $ifNull: ['$reportedAt', '$createdAt'] };
+
 // ─────────────────────────────────────────────
 // OVERVIEW — KPI cards
 // ─────────────────────────────────────────────
@@ -31,26 +35,41 @@ const getOverview = async () => {
       status: { $in: ['resolved', 'closed'] },
       resolvedAt: { $gte: startOfToday },
     }),
-    Incident.find({ status: 'resolved', resolvedAt: { $ne: null } }).select('createdAt resolvedAt onSceneAt'),
+    Incident.find({ status: 'resolved', resolvedAt: { $ne: null } })
+      .select('reportedAt createdAt resolvedAt onSceneAt'),
   ]);
 
-  // Average response time = (onSceneAt - createdAt) for resolved incidents
+  // Average response time = (onSceneAt - reportedAt) for resolved incidents
+  // Only count valid pairs where onSceneAt >= reportedAt
   let avgResponseTime = 0;
-  if (resolvedIncidents.length > 0) {
-    const totalMs = resolvedIncidents.reduce((sum, i) => {
-      const end = i.onSceneAt || i.resolvedAt;
-      return sum + (end.getTime() - i.createdAt.getTime());
+  const validResponses = resolvedIncidents.filter((i) => {
+    const start = i.reportedAt || i.createdAt;
+    const end = i.onSceneAt || i.resolvedAt;
+    return start && end && end.getTime() >= start.getTime();
+  });
+
+  if (validResponses.length > 0) {
+    const totalMs = validResponses.reduce((sum, i) => {
+      const start = (i.reportedAt || i.createdAt).getTime();
+      const end = (i.onSceneAt || i.resolvedAt).getTime();
+      return sum + (end - start);
     }, 0);
-    avgResponseTime = totalMs / resolvedIncidents.length / 60000; // minutes
+    avgResponseTime = totalMs / validResponses.length / 60000;
   }
 
-  // Average resolution time = (resolvedAt - createdAt)
+  // Average resolution time = (resolvedAt - reportedAt)
   let avgResolutionTime = 0;
-  if (resolvedIncidents.length > 0) {
-    const totalMs = resolvedIncidents.reduce((sum, i) => {
-      return sum + (i.resolvedAt.getTime() - i.createdAt.getTime());
+  const validResolutions = resolvedIncidents.filter((i) => {
+    const start = i.reportedAt || i.createdAt;
+    return start && i.resolvedAt && i.resolvedAt.getTime() >= start.getTime();
+  });
+
+  if (validResolutions.length > 0) {
+    const totalMs = validResolutions.reduce((sum, i) => {
+      const start = (i.reportedAt || i.createdAt).getTime();
+      return sum + (i.resolvedAt.getTime() - start);
     }, 0);
-    avgResolutionTime = totalMs / resolvedIncidents.length / 60000;
+    avgResolutionTime = totalMs / validResolutions.length / 60000;
   }
 
   return {
@@ -72,55 +91,65 @@ const getOverview = async () => {
 // INCIDENTS BY TYPE
 // ─────────────────────────────────────────────
 const getIncidentsByType = async () => {
-  const results = await Incident.aggregate([
+  return Incident.aggregate([
     { $group: { _id: '$type', count: { $sum: 1 } } },
     { $sort: { count: -1 } },
     { $project: { _id: 0, type: '$_id', count: 1 } },
   ]);
-  return results;
 };
 
 // ─────────────────────────────────────────────
 // INCIDENTS BY SEVERITY
 // ─────────────────────────────────────────────
 const getIncidentsBySeverity = async () => {
-  const results = await Incident.aggregate([
+  return Incident.aggregate([
     { $group: { _id: '$severity', count: { $sum: 1 } } },
     { $sort: { count: -1 } },
     { $project: { _id: 0, severity: '$_id', count: 1 } },
   ]);
-  return results;
 };
 
 // ─────────────────────────────────────────────
 // INCIDENTS BY PRIORITY
 // ─────────────────────────────────────────────
 const getIncidentsByPriority = async () => {
-  const results = await Incident.aggregate([
+  return Incident.aggregate([
     { $group: { _id: '$priority', count: { $sum: 1 } } },
     { $sort: { _id: 1 } },
     { $project: { _id: 0, priority: '$_id', count: 1 } },
   ]);
-  return results;
 };
 
 // ─────────────────────────────────────────────
 // RESPONSE TIME TREND — daily averages
+// Uses reportedAt as the start time, not createdAt
 // ─────────────────────────────────────────────
 const getResponseTimeTrend = async (days = 7) => {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-  const results = await Incident.aggregate([
+  return Incident.aggregate([
     {
       $match: {
         status: 'resolved',
         resolvedAt: { $ne: null, $gte: since },
+        reportedAt: { $ne: null },
+      },
+    },
+    {
+      // Only count incidents where the dates make sense
+      $match: {
+        $expr: { $gte: ['$resolvedAt', '$reportedAt'] },
       },
     },
     {
       $project: {
-        date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-        responseMs: { $subtract: ['$resolvedAt', '$createdAt'] },
+        date: {
+          $dateToString: {
+            format: '%Y-%m-%d',
+            date: incidentStart,
+          },
+        },
+        responseMs: { $subtract: ['$resolvedAt', '$reportedAt'] },
       },
     },
     {
@@ -136,12 +165,12 @@ const getResponseTimeTrend = async (days = 7) => {
         _id: 0,
         date: '$_id',
         count: 1,
-        avgResponseMinutes: { $round: [{ $divide: ['$avgResponseMs', 60000] }, 1] },
+        avgResponseMinutes: {
+          $round: [{ $divide: ['$avgResponseMs', 60000] }, 1],
+        },
       },
     },
   ]);
-
-  return results;
 };
 
 // ─────────────────────────────────────────────
@@ -175,10 +204,10 @@ const getResourceUtilization = async () => {
 };
 
 // ─────────────────────────────────────────────
-// HOTSPOTS — incidents grouped by grid cell
+// HOTSPOTS — incidents grouped by ~1km grid cells
 // ─────────────────────────────────────────────
 const getHotspots = async () => {
-  const results = await Incident.aggregate([
+  return Incident.aggregate([
     { $match: { status: { $nin: ['closed', 'merged'] } } },
     {
       $project: {
@@ -192,7 +221,6 @@ const getHotspots = async () => {
     {
       $group: {
         _id: {
-          // ~1km grid cells (0.01 degrees ≈ 1.1km)
           lat: { $round: [{ $multiply: ['$lat', 100] }, 0] },
           lng: { $round: [{ $multiply: ['$lng', 100] }, 0] },
         },
@@ -219,20 +247,16 @@ const getHotspots = async () => {
       },
     },
   ]);
-
-  return results;
 };
 
 // ─────────────────────────────────────────────
-// EVENT TIMELINE — recent analytics events
+// EVENT TIMELINE
 // ─────────────────────────────────────────────
 const getRecentEvents = async (limit = 50) => {
-  const events = await AnalyticsEvent.find()
+  return AnalyticsEvent.find()
     .populate('incidentId', 'publicId type severity priority')
     .sort({ createdAt: -1 })
     .limit(limit);
-
-  return events;
 };
 
 module.exports = {

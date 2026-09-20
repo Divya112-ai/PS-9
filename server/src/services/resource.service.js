@@ -280,11 +280,63 @@ const seedResources = async () => {
   return { created, skipped, total: demoResources.length };
 };
 
+const updateResourceLocation = async (resourceId, lat, lng) => {
+  const resource = await Resource.findById(resourceId);
+  if (!resource) {
+    throw new (require('../utils/ApiError'))(404, 'Resource not found', 'RESOURCE_NOT_FOUND');
+  }
+
+  // Update coordinates
+  resource.location.coordinates = [lng, lat];
+  resource.lastUpdated = new Date();
+  await resource.save();
+
+  // If assigned to an incident, compute distance + ETA
+  let distanceKm = null;
+  let etaMinutes = null;
+  let progressPercent = null;
+
+  if (resource.assignedIncidentId) {
+    const incident = await Incident.findById(resource.assignedIncidentId);
+    if (incident?.location?.coordinates) {
+      distanceKm = haversineDistance(
+        [lng, lat],
+        incident.location.coordinates
+      );
+      etaMinutes = estimateEta(distanceKm, 30); // 30 km/h average
+
+      // Progress = (initial distance - current distance) / initial distance
+      // We'd need the starting distance. Store it on assignment.
+      // For simplicity, we compute based on remaining distance relative to a 15km max
+      // Better: track progress client-side using a stored "startedAt" state.
+    }
+  }
+
+  // Broadcast with full context
+  safeEmit('resource:location:updated', {
+    resourceId: resource._id,
+    publicId: resource.publicId,
+    location: resource.location,
+    lastUpdated: resource.lastUpdated,
+    distanceKm,
+    etaMinutes,
+    status: resource.status,
+  });
+
+  logger.info(`Resource ${resource.publicId} moved to [${lng}, ${lat}]`, {
+    distanceKm,
+    etaMinutes,
+  });
+
+  return resource;
+};
+
 module.exports = {
   recommendResources,
   listResources,
   getResourceById,
   updateResourceStatus,
+  updateResourceLocation,
   seedResources,
   CAPABILITY_MAP,
   _internals: {

@@ -4,6 +4,7 @@ import KPICards from '../components/dashboard/KPICards';
 import IncidentCard from '../components/incidents/IncidentCard';
 import IncidentDetailPanel from '../components/incidents/IncidentDetailPanel';
 import ResourcePanel from '../components/resources/ResourcePanel';
+import TrackingCard from '../components/resources/TrackingCard';
 import AlertFeed from '../components/alerts/AlertFeed';
 import MapView from '../components/map/MapView';
 import Button from '../components/common/Button';
@@ -23,6 +24,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [runningDemo, setRunningDemo] = useState(false);
 
+  // ─── Load data ───
   const loadData = useCallback(async () => {
     try {
       const params = filter === 'active' ? { active: 'true' } : { status: filter };
@@ -61,6 +63,7 @@ const Dashboard = () => {
     }
   }, []);
 
+  // ─── Socket.IO listeners ───
   useSocketEvent('incident:created', (incident) => {
     setIncidents((prev) => {
       if (prev.find((i) => i._id === incident._id)) return prev;
@@ -95,6 +98,24 @@ const Dashboard = () => {
     );
   });
 
+  // ⚡ Real-time location tracking
+  useSocketEvent('resource:location:updated', (data) => {
+    setResources((prev) =>
+      prev.map((r) =>
+        r._id === data.resourceId
+          ? {
+              ...r,
+              location: data.location,
+              lastUpdated: data.lastUpdated,
+              distanceKm: data.distanceKm,
+              etaMinutes: data.etaMinutes,
+              isTracking: true,
+            }
+          : r
+      )
+    );
+  });
+
   useSocketEvent('alert:created', (alert) => {
     setAlerts((prev) => [alert, ...prev]);
     refreshKPIs();
@@ -105,6 +126,7 @@ const Dashboard = () => {
     loadData();
   });
 
+  // ─── Handlers ───
   const handleAcknowledge = async (alertId) => {
     try {
       await alertAPI.acknowledge(alertId);
@@ -138,9 +160,12 @@ const Dashboard = () => {
     }
   };
 
+  // ─── Derived data (no hooks below this line) ───
   const activeResources = resources.filter((r) => r.status !== 'available');
   const availableResources = resources.filter((r) => r.status === 'available');
+  const trackingResources = resources.filter((r) => r.status === 'en_route');
 
+  // ─── Early return ───
   if (loading) {
     return (
       <div style={styles.loading}>
@@ -151,7 +176,8 @@ const Dashboard = () => {
   }
 
   return (
-    <div style={{ position: 'relative', height: '100%' }}>
+    <div style={styles.outerContainer}>
+      {/* ─── Main dashboard column ─── */}
       <div style={styles.container}>
         <KPICards data={kpis} />
 
@@ -167,6 +193,7 @@ const Dashboard = () => {
         )}
 
         <div style={styles.mainGrid}>
+          {/* ─── Left: Incidents ─── */}
           <div style={styles.panel}>
             <div style={styles.panelHeader}>
               <h3 style={styles.panelTitle}>Incidents ({incidents.length})</h3>
@@ -202,6 +229,7 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* ─── Center: Map ─── */}
           <div style={styles.mapPanel}>
             <MapView
               incidents={incidents}
@@ -211,11 +239,28 @@ const Dashboard = () => {
             />
           </div>
 
+          {/* ─── Right: Resources + Live Tracking ─── */}
           <div style={styles.panel}>
             <div style={styles.panelHeader}>
               <h3 style={styles.panelTitle}>Resources ({resources.length})</h3>
             </div>
             <div style={styles.scrollList}>
+              {/* ⚡ Live Tracking section */}
+              {trackingResources.length > 0 && (
+                <div style={{ marginBottom: 'var(--space-4)' }}>
+                  <div style={styles.sectionLabel}>🎯 Live Tracking</div>
+                  {trackingResources.map((r) => (
+                    <TrackingCard
+                      key={r._id}
+                      resource={r}
+                      onFocus={(resource) =>
+                        setSelectedIncident({ location: resource.location })
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+
               <ResourcePanel
                 resources={activeResources}
                 title={`Deployed (${activeResources.length})`}
@@ -230,6 +275,7 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* ─── Bottom: Alerts ─── */}
         <div style={styles.alertPanel}>
           <div style={styles.panelHeader}>
             <h3 style={styles.panelTitle}>Alerts ({alerts.length})</h3>
@@ -238,28 +284,49 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* ─── Incident Detail Drawer (own column) ─── */}
       {selectedIncident && (
-        <IncidentDetailPanel
-          incident={selectedIncident}
-          onClose={() => setSelectedIncident(null)}
-          onUpdate={(updated) => {
-            setSelectedIncident(updated);
-            setIncidents((prev) =>
-              prev.map((i) => (i._id === updated._id ? updated : i))
-            );
-          }}
-        />
+        <div style={styles.drawerWrapper}>
+          <IncidentDetailPanel
+            incident={selectedIncident}
+            onClose={() => setSelectedIncident(null)}
+            onUpdate={(updated) => {
+              setSelectedIncident(updated);
+              setIncidents((prev) =>
+                prev.map((i) => (i._id === updated._id ? updated : i))
+              );
+            }}
+          />
+        </div>
       )}
     </div>
   );
 };
 
+// ─── Styles ───
 const styles = {
+  outerContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    height: '100%',
+    width: '100%',
+    overflow: 'hidden',
+    gap: 'var(--space-4)',
+  },
   container: {
     display: 'flex',
     flexDirection: 'column',
     gap: 'var(--space-4)',
     height: '100%',
+    flex: 1,
+    minWidth: 0,               // prevents flex children from overflowing
+    overflow: 'hidden',
+  },
+  drawerWrapper: {
+    width: '420px',
+    flexShrink: 0,
+    height: '100%',
+    overflow: 'hidden',
   },
   loading: {
     display: 'flex',
@@ -278,7 +345,7 @@ const styles = {
     gridTemplateColumns: '300px 1fr 300px',
     gap: 'var(--space-4)',
     flex: 1,
-    minHeight: '500px',
+    minHeight: 0,              // allows the grid to shrink inside flex
   },
   panel: {
     background: 'var(--bg-surface)',
@@ -287,12 +354,15 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    minHeight: 0,
   },
   mapPanel: {
     background: 'var(--bg-surface)',
     border: '1px solid var(--border-subtle)',
     borderRadius: 'var(--radius-lg)',
     overflow: 'hidden',
+    minHeight: 0,
+    position: 'relative',
   },
   panelHeader: {
     padding: 'var(--space-3)',
@@ -300,6 +370,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexShrink: 0,
   },
   panelTitle: {
     fontSize: '13px',
@@ -332,6 +403,7 @@ const styles = {
     flex: 1,
     overflowY: 'auto',
     padding: 'var(--space-3)',
+    minHeight: 0,
   },
   emptyText: {
     fontSize: '13px',
@@ -339,14 +411,23 @@ const styles = {
     textAlign: 'center',
     padding: 'var(--space-8)',
   },
+  sectionLabel: {
+    fontSize: '10px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    color: 'var(--accent-primary)',
+    marginBottom: 'var(--space-2)',
+  },
   alertPanel: {
     background: 'var(--bg-surface)',
     border: '1px solid var(--border-subtle)',
     borderRadius: 'var(--radius-lg)',
-    maxHeight: '260px',
+    maxHeight: '220px',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    flexShrink: 0,
   },
 };
 

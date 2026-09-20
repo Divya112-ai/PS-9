@@ -47,6 +47,7 @@ export const incidentAPI = {
   create: (data) => api.post('/incidents', data),
   list: (params) => api.get('/incidents', { params }),
   get: (id) => api.get(`/incidents/${id}`),
+  myReports: () => api.get('/incidents/my-reports'),
   assign: (id, resourceId) => api.post(`/incidents/${id}/assign`, { resourceId }),
   updateStatus: (id, status) => api.post(`/incidents/${id}/status`, { status }),
   merge: (id, sourceIncidentId) => api.post(`/incidents/${id}/merge`, { sourceIncidentId }),

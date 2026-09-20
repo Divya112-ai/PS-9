@@ -24,4 +24,11 @@ router.post(
   ctrl.seedResources
 );
 
+router.patch(
+  '/:id/location',
+  requireAuth,
+  requireRole('operator', 'admin'),
+  ctrl.updateLocation
+);
+
 module.exports = router;

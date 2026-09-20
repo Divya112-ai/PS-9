@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, MapPin, Send, CheckCircle, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, MapPin, Send, CheckCircle, ArrowLeft, LogIn } from 'lucide-react';
 import { incidentAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Card from '../components/common/Card';
@@ -18,6 +19,7 @@ const EMERGENCY_TYPES = [
 ];
 
 export default function CitizenReport() {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     description: '',
     address: '',
@@ -148,6 +150,16 @@ export default function CitizenReport() {
               <Button variant="primary" onClick={resetForm}>
                 Submit another report
               </Button>
+              {!user && (
+                <Link to="/login?tab=register" style={styles.trackLink}>
+                  Create an account to track this report →
+                </Link>
+              )}
+              {user && (
+                <Link to="/my-reports" style={styles.trackLink}>
+                  View all my reports →
+                </Link>
+              )}
               <Link to="/" style={styles.backLink}>
                 ← Back to home
               </Link>
@@ -164,12 +176,23 @@ export default function CitizenReport() {
   return (
     <div style={styles.pageContainer}>
       <header style={styles.header}>
-        <Link to="/login" style={styles.headerBack}>
+        <Link to="/" style={styles.headerBack}>
           <ArrowLeft size={18} /> Back
         </Link>
         <div style={styles.headerBrand}>
           <span style={{ fontSize: '24px' }}>🚨</span>
           <span style={styles.headerBrandText}>PS-9 Emergency Report</span>
+        </div>
+        <div style={{ marginLeft: 'auto' }}>
+          {user ? (
+            <Link to="/my-reports" style={styles.headerAuthLink}>
+              My Reports →
+            </Link>
+          ) : (
+            <Link to="/login" style={styles.headerAuthLink}>
+              <LogIn size={14} /> Sign in to track reports
+            </Link>
+          )}
         </div>
       </header>
 
@@ -461,5 +484,20 @@ const styles = {
   backLink: {
     fontSize: '13px',
     color: 'var(--text-muted)',
+  },
+  headerAuthLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '13px',
+    color: 'var(--accent-primary)',
+    fontWeight: 500,
+    textDecoration: 'none',
+  },
+  trackLink: {
+    fontSize: '14px',
+    color: 'var(--accent-primary)',
+    fontWeight: 500,
+    textDecoration: 'none',
   },
 };

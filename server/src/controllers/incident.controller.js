@@ -1,6 +1,7 @@
 const asyncHandler = require('../utils/asyncHandler');
 const { successResponse } = require('../utils/apiResponse');
 const incidentService = require('../services/incident.service');
+const Incident = require('../models/Incident');
 
 // ─────────────────────────────────────────────
 // POST /api/v1/incidents  (public — citizen)
@@ -99,10 +100,23 @@ const getRecommendations = asyncHandler(async (req, res) => {
   return successResponse(res, { recommendations });
 });
 
+// ─────────────────────────────────────────────
+// GET /api/v1/incidents/my-reports   (citizen)
+// Returns all incidents reported by the authenticated user
+// ─────────────────────────────────────────────
+const getMyReports = asyncHandler(async (req, res) => {
+  const incidents = await Incident.find({ reportedBy: req.user.id })
+    .populate('assignedResources', 'publicId name subtype status')
+    .sort({ createdAt: -1 })
+    .limit(100);
+  return successResponse(res, { incidents, total: incidents.length });
+});
+
 module.exports = {
   createIncident,
   listIncidents,
   getIncident,
+  getMyReports,
   assignResource,
   updateStatus,
   mergeIncidents,

@@ -1,74 +1,70 @@
 :root {
-  /* ─── Severity colors (interface conventions) ─── */
-  --severity-critical: #dc2626;   /* red */
-  --severity-high: #ea580c;       /* orange */
-  --severity-medium: #ca8a04;     /* yellow */
-  --severity-low: #16a34a;        /* green */
-  --severity-info: #3b82f6;       /* blue */
+  /* ─── Backgrounds (layered for depth) ─── */
+  --bg-base: #0a0e1a;
+  --bg-surface: #131a2b;
+  --bg-surface-hover: #1a2236;
+  --bg-elevated: #1a2236;
 
-  /* ─── Priority colors ─── */
-  --priority-p1: #dc2626;
-  --priority-p2: #ea580c;
-  --priority-p3: #ca8a04;
-  --priority-p4: #16a34a;
+  /* ─── Sidebar ─── */
+  --sidebar-bg: #0a0e1a;
+  --sidebar-text: #e2e8f0;
+  --sidebar-text-muted: #7d8ba1;
+  --sidebar-active-bg: rgba(96, 165, 250, 0.12);
+  --sidebar-active-border: #60a5fa;
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.04);
 
-  /* ─── Status colors ─── */
-  --status-reported: #64748b;
-  --status-classified: #3b82f6;
-  --status-assigned: #8b5cf6;
-  --status-en_route: #f59e0b;
-  --status-on_scene: #ea580c;
-  --status-resolved: #16a34a;
-  --status-closed: #475569;
-  --status-merged: #6b7280;
-
-  /* ─── Base palette (dark command center) ─── */
-  --bg-base: #0a0f1e;
-  --bg-surface: #111827;
-  --bg-elevated: #1e293b;
-  --bg-hover: #334155;
-
-  --border-subtle: #1e293b;
-  --border-default: #334155;
-  --border-strong: #475569;
-
+  /* ─── Text ─── */
   --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
+  --text-secondary: #b8c2d1;
+  --text-muted: #7d8ba1;
+  --text-dim: #55617a;
+  --text-inverse: #0a0e1a;
 
-  --accent-primary: #3b82f6;
-  --accent-primary-hover: #2563eb;
-  --accent-success: #16a34a;
-  --accent-warning: #f59e0b;
-  --accent-danger: #dc2626;
+  /* ─── Borders ─── */
+  --border-subtle: #212a3e;
+  --border-default: #2f3a52;
+  --border-strong: #45516b;
 
-  /* ─── Spacing ─── */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-12: 3rem;
+  /* ─── Accents ─── */
+  --accent-primary: #60a5fa;
+  --accent-primary-hover: #3b82f6;
+  --accent-success: #4ade80;
+  --accent-warning: #fbbf24;
+  --accent-danger: #f87171;
 
-  /* ─── Radius ─── */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-full: 9999px;
+  /* ─── Severity ─── */
+  --severity-critical: #f87171;
+  --severity-high: #fb923c;
+  --severity-medium: #fbbf24;
+  --severity-low: #60a5fa;
+  --severity-info: #22d3ee;
+
+  /* ─── Status ─── */
+  --status-resolved: #4ade80;
+  --status-active: #60a5fa;
 
   /* ─── Shadows ─── */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 0 3px rgba(96, 165, 250, 0.15);
 
-  /* ─── Typography ─── */
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+  /* ─── Spacing ─── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
 
-  /* ─── Layout ─── */
-  --header-height: 60px;
-  --sidebar-width: 220px;
+  /* ─── Radius ─── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
+
+  /* ─── Fonts ─── */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
 }

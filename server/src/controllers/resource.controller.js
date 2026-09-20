@@ -44,9 +44,24 @@ const seedResources = asyncHandler(async (req, res) => {
   return successResponse(res, result, 201);
 });
 
+const updateLocation = asyncHandler(async (req, res) => {
+  const { lat, lng } = req.body;
+  if (typeof lat !== 'number' || typeof lng !== 'number') {
+    throw ApiError.badRequest('lat and lng are required', 'MISSING_COORDS');
+  }
+  const resource = await resourceService.updateResourceLocation(
+    req.params.id,
+    lat,
+    lng
+  );
+  return successResponse(res, resource);
+});
+
+
 module.exports = {
   listResources,
   getResource,
   updateStatus,
   seedResources,
+  updateLocation,
 };

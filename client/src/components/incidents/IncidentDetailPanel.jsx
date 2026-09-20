@@ -320,19 +320,15 @@ const IncidentDetailPanel = ({ incident: initialIncident, onClose, onUpdate }) =
 };
 
 const styles = {
-  drawer: {
-    width: '420px',
-    height: '100%',
-    background: 'var(--bg-surface)',
-    borderLeft: '1px solid var(--border-subtle)',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    zIndex: 100,
-    boxShadow: '-8px 0 24px rgba(0,0,0,0.3)',
+ drawer: {
+  width: '100%',
+  height: '100%',
+  background: 'var(--bg-surface)',
+  borderLeft: '1px solid var(--border-subtle)',
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
+  boxShadow: '-8px 0 24px rgba(0,0,0,0.3)', 
   },
   header: {
     padding: 'var(--space-4)',
